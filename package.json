@@ -1,6 +1,6 @@
 {
   "name": "rufio-server",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A server for a Rufio site",
   "main": "index.js",
   "scripts": {
