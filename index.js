@@ -1,21 +1,11 @@
-var RufioServer = require('./lib/server');
+var RufioServer = require('./lib/server').RufioServer;
 
-module.exports = function(rufio) {
+module.exports = function (config) {
+	// Create server
+	var server = new RufioServer(config);
 
-	rufio.config.validate('server', function(val, done) {
-
-		if (typeof val === 'undefined') {
-			done('The server plugin requires configuration.');
-		}
-		
-		if (typeof val.port !== 'undefined' && typeof val.port !== 'number') {
-			done('Server port must be a number');
-		}
-		
-		// No errors
-		done();
-	});
-
+	// Handle requests
+	return function (req, res, next) {
+		server.handle(req, res, next);
+	};
 };
-
-module.exports.RufioServer = RufioServer;
