@@ -1,11 +1,12 @@
-// var rufio = require('rufio');
 import Router from 'router';
+import through2 from 'through2';
 import {Site, Type, Item} from 'rufio';
 
 export class RufioServer {
-	constructor (site) {
-		// Create the rufio site
-		this.site = site
+	constructor (site, theme) {
+		// References to the site and theme
+		this.site = site;
+		this.theme = theme;
 
 		// setup router
 		this.router = new Router();
@@ -22,50 +23,74 @@ export class RufioServer {
 	}
 
 	handle (req, res, next) {
-		this.router.handle(req, res, () => {
-			if (!res.locals.item) {
-				return next();
-			}
-
-			this.site.theme.renderContentItem(res.locals.item, (err, str) => {
-				res.status(200).send(str);
-			});
-		});
+		this.router.handle(req, res, next);
 	}
 
 	handleType (type) {
-		// Handle the index routes
-		type.indexes.forEach((index) => {
-			if (!index.route) {
-				return;
-			}
-
-			this.router.get(index.route, (req, res, next) => {
-				// Match by index
-				var match = type.getItemsFromIndex(index.groupBy, req.params);
-
-				// No match :(
-				if (!match) {
+		// Handle the item routes
+		if (type.itemRoute) {
+			this.router.get(type.itemRoute, (req, res, next) => {
+				var match = type.getItemsFromIndex('permalink', {
+					permalink: req.url
+				});
+				
+				if (!match || !match.length) {
 					return next();
 				}
 
-				this.site.get('theme').renderContentIndex(match, (err, str) => {
-					res.status(200).send(str);
-				});
-				next();
+				var t = this.theme(this.site);
+				t.pipe(through2.obj(function (content) {
+					res.status(200);
+					res.type(match.items[0].mime);
+					res.send(content);
+					res.end();
+				}));
+				t.write(match.items[0]);
 			});
+		}
+
+		// Handle the index route
+		if (type.route) {
+			this.router.get(type.route, (req, res, next) => {
+				var t = this.theme(this.site);
+				t.pipe(through2.obj(function (content) {
+					res.status(200);
+					res.type('application/json');
+					res.send(content);
+				}));
+				t.write(type);
+			});
+		}
+
+		// Handle the sub index routes
+		Object.keys(type.indices).forEach((c) => {
+			if (type.indices[c].route) {
+				this.router.get(type.indices[c].route, (req, res, next) => {
+					var t = this.theme(this.site);
+					t.pipe(through2.obj(function (content) {
+						res.status(200);
+						res.type('application/json');
+						res.send(content);
+					}));
+					t.write(type.indices[c]);
+				});
+			}
 		});
 	}
 
 	handleItem (item) {
+		//console.log(item.path);
+		/*
 		this.router.get(item.pathname, (req, res, next) => {
-			this.site.get('theme').renderContentItem(item, (err, str) => {
-				if (err) {
-					console.log('Error rendering theme', err.stack);
-					return res.status(500).send(err);
-				}
-				res.status(200).send(str);
-			});
+			var t = this.theme(this.site);
+			t.pipe(through2.obj(function (content) {
+				res.status(200);
+				res.type(item.mime);
+				res.send(content);
+				res.end();
+			}));
+			t.write(item);
 		});
+		*/
 	}
 }

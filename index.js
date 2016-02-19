@@ -1,11 +1,13 @@
 var RufioServer = require('./lib/server').RufioServer;
 
-module.exports = function (config) {
+module.exports = function (site, theme) {
 	// Create server
-	var server = new RufioServer(config);
+	var server = new RufioServer(site, theme);
 
 	// Handle requests
 	return function (req, res, next) {
 		server.handle(req, res, next);
 	};
 };
+
+module.exports.RufioServer = RufioServer;
